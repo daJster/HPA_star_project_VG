@@ -19,20 +19,12 @@
     visibility: hidden;
 }
 
-.blue-point {
-    background-color: blue;
-}
-
-.red-point {
-    background-color: red;
-}
-
-.line {
+.line, .gridLine {
     position: absolute;
-    background-color: green;
     transform-origin: 0% 0%;
     visibility: hidden;
 }   
+
 
 /* You can use the same image as an example */
 #image-element {

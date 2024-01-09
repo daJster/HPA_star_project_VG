@@ -15,13 +15,51 @@ toggleButton.addEventListener('change', function() {
 // JavaScript to handle slider value
 const slider = document.getElementById('slider');
 const lastSliderValue = document.getElementById('lastSliderValue');
+const displayButton = document.getElementById('displayButton');
 
 slider.addEventListener('input', function() {
     const value = this.value;
-    // console.log('Slider Value:', value);
+    clearPath(['gridLine', 'exitPoint'])
+    promise = fetchGridAndExitPoints(value); 
+        promise.then(result => {
+            const xDiv = result.x_div;
+            const yDiv = result.y_div;
+            const exitPoints = result.exit_points;
+            // Draw Grid lines
+            for (let i = 0; i < xDiv.length; i++) {
+                drawLine([{ x: xDiv[i], y: 0 }, { x: xDiv[i], y: originalImageHeight }], size=3, color='purple', className='gridLine');
+                drawLine([{ x: 0, y: yDiv[i] }, { x: originalImageWidth, y: yDiv[i] }], size=3, color='purple', className='gridLine');
+            }
+
+            // Draw Exit points
+            for (let i = 0; i < exitPoints.length; i++){
+                exitPoints[i][1].forEach(coords => {
+                    setPoint(imageContainer, 'exitPoint', coords, size=3, color='#FFB534')
+                });
+            }
+
+        }).catch(error => {
+            console.error('Error:', error);
+        }); 
     lastSliderValue.textContent = value;
 });
 
+displayButton.addEventListener('click', function () {
+    const contentToToggle = document.getElementById('contentToToggle');
+    const buttonIcon = document.querySelector('#displayButton i');
+
+    if (contentToToggle.style.display === 'none' || contentToToggle.style.display === '') {
+      contentToToggle.style.display = 'block';
+      buttonIcon.classList.remove('fa-eye-slash');
+      buttonIcon.classList.add('fa-eye');
+      displayButton.textContent = 'Hide';
+    } else {
+      contentToToggle.style.display = 'none';
+      buttonIcon.classList.remove('fa-eye');
+      buttonIcon.classList.add('fa-eye-slash');
+      displayButton.textContent = 'Show';
+    }
+  });
 
 let startPoint = null;
 let endPoint = null;
@@ -67,6 +105,33 @@ async function fetchOptimalPath(startPoint, endPoint) {
     }
 }
 
+async function fetchGridAndExitPoints(gridSize) {
+    try {
+        const response = await fetch('/load_grid_and_exit_points', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                grid_size : gridSize
+            }),
+        });
+
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            // Handle the error message, for example, display it on the website
+            console.error('Error:', errorMessage);
+            return;
+        }
+
+        const result = await response.json();
+        // Handle the result, for example, update the UI with the optimal path
+        return result;
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
 // Add a click event listener to the image container
 imageElement.addEventListener('click', function(event) {
     // Get the coordinates relative to the image container
@@ -78,16 +143,13 @@ imageElement.addEventListener('click', function(event) {
     const scaledY = Math.floor(y / scaleFactor);
 
     // Log or use the scaled coordinates as needed
-    // console.log(`Original Coordinates: (${x}, ${y})`);
-    // console.log(`Scaled Coordinates: (${scaledX}, ${scaledY})`);
-
     if (clickCounter === 0) {
         startPoint = {x, y};
-        setPoint('startPoint', startPoint, 'blue-point');
+        setPoint(imageContainer, 'startPoint', startPoint, size=7, color='blue');
         clickCounter++;
     } else if (clickCounter === 1){
         endPoint = {x, y};
-        setPoint('endPoint', endPoint, 'red-point');
+        setPoint(imageContainer, 'endPoint', endPoint, size=7, color='red');
         clickCounter++;
         promise = fetchOptimalPath(startPoint, endPoint); 
         promise.then(result => {
@@ -97,10 +159,10 @@ imageElement.addEventListener('click', function(event) {
             console.error('Error:', error);
         }); 
     } else {
-        clearPath();
+        clearPath(['line', 'startPoint', 'endPoint']);
         clickCounter = 0;
         startPoint = {x, y};
-        setPoint('startPoint', startPoint, 'blue-point');
+        setPoint(imageContainer, 'startPoint', startPoint,  size=7, color='blue');
         clickCounter++;
     }
 });
@@ -123,9 +185,8 @@ function generateRandomLine(numPoints, startPoint) {
     return coords;
 }
 
-function drawLine(coords, size=3) {
+function drawLine(coords, size=3, color='green', className='line') {
     coords.forEach((coord, i) => {
-        // console.log(coord);
     
         if (i < coords.length - 1) {
             const start = coord;
@@ -137,12 +198,13 @@ function drawLine(coords, size=3) {
     
             // Create a line element
             const newLine = document.createElement('div');
-            newLine.className = 'line';
+            newLine.className = `${className}`;
             newLine.style.width = `${distance}px`;
             newLine.style.transform = `rotate(${angle}rad)`;
             newLine.style.height = `${size}px`;
             newLine.style.left = `${start.x}px`;
             newLine.style.top = `${start.y}px`;
+            newLine.style.backgroundColor = `${color}`;
             newLine.style.visibility = 'visible';
             // Append the line to the container
             imageContainer.appendChild(newLine); // Change this to your actual container element
@@ -169,25 +231,26 @@ function originalToWebsiteCoords(originalCoords, scaleFactor) {
 }
 
 
-function setPoint(id, coords, pointClass, size=7) {
-    const pointElement = document.getElementById(id);
-    pointElement.style.left = `${coords.x}px`;
-    pointElement.style.top = `${coords.y}px`;
+function setPoint(parentElement, className, coords, size=7, color) {
+    const pointElement = document.createElement('div');
+    pointElement.style.position = 'absolute';
+    pointElement.style.left = `${coords.x - Math.floor(size/2)}px`;
+    pointElement.style.top = `${coords.y- Math.floor(size/2)}px`;
     pointElement.style.height = `${size}px`;
     pointElement.style.width = `${size}px`;
-    pointElement.className = `point ${pointClass}`;
+    pointElement.style.backgroundColor = `${color}`;
+    pointElement.className = `point ${className}`;
     pointElement.style.visibility = 'visible';
+
+    parentElement.appendChild(pointElement);
 }
 
-function clearPath() {
-    const existingLines = document.querySelectorAll('.line');
-    existingLines.forEach(line => line.style.visibility = 'hidden');
-
-    const existingPoints = document.querySelectorAll('.point');
-    existingPoints.forEach(point => point.style.visibility = 'hidden');
-    // console.log("cleared")
+function clearPath(classNames) {
+    classNames.forEach( className => {
+        const existingclass = document.querySelectorAll(`.${className}`);
+        existingclass.forEach(obj => obj.remove());
+    });
 }
-
 
 function createButtons() {
     // Get the container where buttons will be added
@@ -213,10 +276,10 @@ function createButtons() {
             })
             .then(response => response.json())
             .then(data => {
-                clearPath();
+                clearPath(['line', 'gridLine', 'point']);
                 imageElement.src = data.image_path 
                 imageContainer.style.width = `${data.original_width}px`;
-                imageContainer.style.height = `${data.original_height}px`; 
+                imageContainer.style.height = `${data.original_height}px`;
                 originalImageWidth = data.original_width;
                 originalImageHeight = data.original_height;
             })

@@ -95,5 +95,28 @@ def get_optimal_path():
 
     return jsonify({'path': optimal_path})
 
+def convert_int64_to_int(item):
+    if isinstance(item, np.int64):
+        return int(item)
+    elif isinstance(item, list):
+        return [convert_int64_to_int(subitem) for subitem in item]
+    elif isinstance(item, dict):
+        return {key: convert_int64_to_int(value) for key, value in item.items()}
+    else:
+        return item
+    
+    
+@app.route('/load_grid_and_exit_points', methods=['POST'])
+def load_grid_and_exit_points():
+    data = request.get_json()
+    grid_size = int(data.get('grid_size'))
+    n_divisions = grid_size
+    x_divisions = np.linspace(0, loaded_array.shape[0], num=n_divisions, dtype=int)
+    y_divisions = np.linspace(0, loaded_array.shape[1], num=n_divisions, dtype=int)
+    exit_points = convert_int64_to_int(get_strategic_exit_points(loaded_array, x_divisions, y_divisions))
+    
+    return jsonify({'x_div' : x_divisions.tolist(), 'y_div' : y_divisions.tolist(), 'exit_points' : exit_points})
+
+
 if __name__ == '__main__':
     app.run(debug=True)

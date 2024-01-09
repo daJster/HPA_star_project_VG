@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='imgs/icon.jpg') }}" type="image">
     <title>HPA* Project</title>
@@ -21,15 +22,23 @@
                     </div>
                 </div>
 
-                <div class="col-md-4 bg-light mt-4 p-2 rounded-end">
-                    <div class="col-md-10 bg-light">
+                <div class="col-md-6 bg-light mt-4 p-2 rounded-end">
+                    <div class="col-md-12 bg-light">
                         <!-- Slider and value display in the same container -->
-                        <div class="form-group slider-container d-flex align-items-center">
-                            <div class="col-md-5">Grid size:</div> 
-                            <input type="range" class="form-control-range flex-grow-1 mt-1" id="slider" min="0" max="50">
+                        <div class="form-group slider-container d-flex align-items-center" style="display : blo">
+                            <div class="text-justify">Grid size:</div> 
+                            <input type="range" class="form-control-range flex-grow-1 mt-1" min="0" max="50" step="5"  id="slider" min="0" max="50">
                             <!-- Display the last slider value next to the slider -->
                             <div class="slider-value ml-2 mt-3 col-md-1">
                                 <p><span id="lastSliderValue">25</span></p>
+                            </div>
+
+                            <button id="displayButton" class="btn btn-primary">
+                                <i class="fas fa-eye"></i> Show
+                              </button>
+
+                            <div id="contentToToggle" class="mt-3">
+                            <!-- Content that can be hidden or shown TO REMOVE AND MODIFY -->
                             </div>
                         </div>
                     </div>
@@ -63,6 +72,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+
 </body>
 </html>
 

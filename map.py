@@ -253,7 +253,7 @@ if __name__ == "__main__":
     exit_points = get_strategic_exit_points(loaded_array, x_divisions, y_divisions)
     # Set start and end coordinates (replace with your own coordinates) (X, Y)
     start_coord = {'x': 0, 'y': 0}
-    end_coord = {'x': 0, 'y': 0}
+    end_coord = {'x': 0, 'y': 10}
 
 
     # Run A* pathfinding algorithm

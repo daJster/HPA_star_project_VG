@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 from heapq import heappop, heappush
 import os
 
@@ -11,10 +12,11 @@ map_dicts = [{'map_name' : 'lol-map', 'threshold' : 20, 'grid_size' : 15, 'rever
                 {'map_name' : 'Berlin-map', 'threshold' : 230, 'grid_size' : 40, 'reverse' : True},
                 {'map_name' : 'Liverpool-map', 'threshold' : 200, 'grid_size' : 40, 'reverse' : True},
                 {'map_name' : 'Paris-map', 'threshold' : 200, 'grid_size' : 40, 'reverse' : True},
-                {'map_name' : 'Tokyo-map', 'threshold' : 160, 'grid_size' : 40, 'reverse' : True},
+                {'map_name' : 'Tokyo-map', 'threshold' : 160, 'grid_size' : 20, 'reverse' : True},
                 {'map_name' : 'Rome-map', 'threshold' : 70, 'grid_size' : 40, 'reverse' : False},
                 {'map_name' : 'France-map', 'threshold' : 240, 'grid_size' : 40, 'reverse' : True},
                 {'map_name' : 'Russia-map', 'threshold' : 240, 'grid_size' : 40, 'reverse' : True}]
+
 
 map_directory = "maps"
 
@@ -142,7 +144,7 @@ def transform_to_subgrid_coordinates(global_coord, subgrid_start):
 def transform_to_global_coordinates(subgrid_coord, subgrid_start):
     return (subgrid_coord[0] + subgrid_start[0], subgrid_coord[1] + subgrid_start[1])
 
-def run_astar_in_rectangle(grid, exit_points, x_divisions, y_divisions):
+def run_astar_in_rectangle(grid, exit_points, x_divisions, y_divisions, js_api=False):
     paths_list = []
     for i, rectangle_points in enumerate(exit_points):
         print(f"exit_point : {i+1}/{len(exit_points)}")
@@ -168,8 +170,11 @@ def run_astar_in_rectangle(grid, exit_points, x_divisions, y_divisions):
                     path = astar_pathfinding(subgrid, start_point_subgrid, end_point_subgrid)
 
                     # Transform A* path coordinates back to global grid
-                    path_global = tuple_to_json([transform_to_global_coordinates(point, subgrid_start) for point in path])
-                    paths_list.append([path_global, False])
+                    path_global = [transform_to_global_coordinates(point, subgrid_start) for point in path]
+                    if js_api:
+                        paths_list.append(path_global)
+                    else:
+                        paths_list.append([path_global, False])
 
     return paths_list
 
@@ -235,38 +240,58 @@ def tuple_to_json(path) :
         json_list.append({'x' : point[0], 'y' : point[1]})
     return json_list
 
-if __name__ == "__main__":
-    
-    map_dict = map_dicts[-4]  # Replace with the path to your image
-    
-    image_path = get_image_path(map_directory, map_dict['map_name'], supported_extensions)
-    is_saved = create_obstacle_map(image_path, threshold_value=map_dict['threshold'], reverse=map_dict['reverse'])
-    # Load the NumPy array    
-    loaded_array = load_npy(f"obstacle_maps/{map_dict['map_name']}_obstacle.npy")
-    
-    # Divide the loaded image into equal lengths on x-axis and y-axis
-    n_divisions = map_dict['grid_size']
+def create_directory(directory_path):
+    # Check if the directory exists
+    if not os.path.exists(directory_path):
+        # If not, create it
+        os.makedirs(directory_path)
+        print(f"Directory '{directory_path}' created successfully.")
+    else:
+        print(f"Directory '{directory_path}' already exists.")
+
+
+
+def main():
+    parser = argparse.ArgumentParser(description="HPA* Pathfinding in Video Games")
+    parser.add_argument("--image_path", type=str, default="maps/tokyo-map.png", help="Image map path")
+    parser.add_argument("--grid_size", type=int, default=5, help="Number of divisions for the grid")
+    parser.add_argument("--threshold", type=int, default=25, help="threshold of the color to create obstacles")
+    parser.add_argument("--reverse", type=bool, default=False, help="reverse the map color, to use if obstacles are brighter than the roads")
+    parser.add_argument("--start_coord", nargs=2, type=int, default=[420, 400], help="Start coordinates (X Y)")
+    parser.add_argument("--end_coord", nargs=2, type=int, default=[360, 110], help="End coordinates (X Y)")
+
+    args = parser.parse_args()
+
+    create_directory("obstacle_maps")
+
+    image_path = args.image_path
+    is_saved = create_obstacle_map(image_path, threshold_value=args.threshold, reverse=args.reverse)
+
+    loaded_array = load_npy(f"obstacle_maps/{args.image_path.split('/')[-1].split('.')[0]}_obstacle.npy")
+
+    n_divisions = args.grid_size
     x_divisions = np.linspace(0, loaded_array.shape[0], num=n_divisions, dtype=int)
     y_divisions = np.linspace(0, loaded_array.shape[1], num=n_divisions, dtype=int)
-    
-    # static exit_points
+
     exit_points = get_strategic_exit_points(loaded_array, x_divisions, y_divisions)
-    # Set start and end coordinates (replace with your own coordinates) (X, Y)
-    start_coord = {'x': 0, 'y': 0}
-    end_coord = {'x': 0, 'y': 10}
 
+    start_coord = {'x': args.start_coord[0], 'y': args.start_coord[1]}
+    end_coord = {'x': args.end_coord[0], 'y': args.end_coord[1]}
 
-    # Run A* pathfinding algorithm
-    optimal_path = tuple_to_json(astar_pathfinding(loaded_array, (start_coord['x'], start_coord['y']), (end_coord['x'], end_coord['y'])))
+    optimal_path = tuple_to_json(astar_pathfinding(loaded_array, (start_coord['x'], start_coord['y']),
+                                                (end_coord['x'], end_coord['y'])))
     main_path = [optimal_path, True]
+
+    paths_between_exit_points = tuple_to_json(run_astar_in_rectangle(loaded_array, exit_points, x_divisions, y_divisions))
     
-    # Run A* in each rectangle to compute paths between exit points
-    # paths_between_exit_points = run_astar_in_rectangle(loaded_array, exit_points, x_divisions, y_divisions)
-     
-    paths = [main_path] 
-    # print(paths)
-    # Visualize the path on the image
+    # Uncomment the following lines if using HPA*
+    # paths = paths_between_exit_points + [main_path]
+    
+    # Comment the following line if using HPA*
+    paths = [main_path]
+
     visualize_path(loaded_array, paths, start_coord, end_coord, x_divisions, y_divisions, exit_points)
 
-    # Return the path as a list of coordinates
-    # print("A* Path:", path)
+
+if __name__ == "__main__":
+    main()

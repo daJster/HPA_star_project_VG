@@ -2,29 +2,51 @@
 // Names of the games
 // JavaScript to handle toggle state
 const toggleButton = document.getElementById('toggleButton');
-const gameNamesDict  = {"Berlin": "Berlin", "Liverpool": "Liverpool", "Paris":"Paris", "Tokyo":"Tokyo", "Rome":"Rome", "France":"France", "Russia":"Russia", 'League Of Legends': 'lol', 'GTA V': 'GTAV', 'Test': 'test', }
-
-toggleButton.addEventListener('change', function() {
-    if (this.checked) {
-        console.log('On');
-    } else {
-        console.log('Off');
-    }
-});
+const gameNamesDict  = {"Berlin": "Berlin", "Liverpool": "Liverpool", "Paris": "Paris", "Tokyo":"Tokyo", "Rome":"Rome", "France":"France", "Russia":"Russia", 'League Of Legends': 'lol', 'GTA V': 'GTAV', 'Test': 'test', }
 
 // JavaScript to handle slider value
 const slider = document.getElementById('slider');
 const lastSliderValue = document.getElementById('lastSliderValue');
 const displayButton = document.getElementById('displayButton');
+let xDiv = [];
+let yDiv = [];
+let exitPoints = [];
+
+
+toggleButton.addEventListener('change', function() {
+    if (this.checked) {
+        fetch('/get_hpa_path', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json', // Update Content-Type to JSON
+            },
+            body: JSON.stringify({
+                'x_divisions': xDiv, 'y_divisions': yDiv, 'exit_points': exitPoints,
+            }),
+        }).then(response => response.json())
+            .then(data => {
+                const paths = data.paths;
+                clearPath(['line']);
+                for(let i = 0; i < paths.length; i++){
+                    let path = paths[i].map(coord => {
+                        return { x: coord[0], y: coord[1] };
+                    });
+                    drawLine(path, size=3, color='cyan');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        
+    }
+});
 
 slider.addEventListener('input', function() {
     const value = this.value;
     clearPath(['gridLine', 'exitPoint'])
     promise = fetchGridAndExitPoints(value); 
         promise.then(result => {
-            const xDiv = result.x_div;
-            const yDiv = result.y_div;
-            const exitPoints = result.exit_points;
+            xDiv = result.x_div;
+            yDiv = result.y_div;
+            exitPoints = result.exit_points;
             // Draw Grid lines
             for (let i = 0; i < xDiv.length; i++) {
                 drawLine([{ x: xDiv[i], y: 0 }, { x: xDiv[i], y: originalImageHeight }], size=3, color='purple', className='gridLine');

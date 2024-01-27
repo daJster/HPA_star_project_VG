@@ -9,47 +9,21 @@ from map import get_image_path, \
                 run_astar_in_rectangle,\
                 visualize_path,\
                 map_dicts,\
-                map_directory, supported_extensions
+                map_directory, supported_extensions, create_directory
 import numpy as np
 
 app = Flask(__name__)
 
 global loaded_array
-loaded_array = load_npy(f"obstacle_maps/{map_dicts[0]['map_name']}_obstacle.npy")
+try :
+    loaded_array = load_npy(f"obstacle_maps/{map_dicts[0]['map_name']}_obstacle.npy")
+except Exception as e :
+    create_directory("obstacle_maps")
+    print(e)
+    
 
 @app.route('/')
 def index() :
-    # map_dict = map_dicts[2]  # Replace with the path to your image
-    
-    # image_path = get_image_path(map_directory, map_dict['map_name'], supported_extensions)
-    # is_saved = create_obstacle_map(image_path, threshold_value=map_dict['threshold'])
-    # # Load the NumPy array    
-    # loaded_array = load_npy(f"obstacle_maps/{map_dict['map_name']}_obstacle.npy")
-    
-    # # Divide the loaded image into equal lengths on x-axis and y-axis
-    # n_divisions = map_dict['grid_size']
-    # x_divisions = np.linspace(0, loaded_array.shape[0], num=n_divisions, dtype=int)
-    # y_divisions = np.linspace(0, loaded_array.shape[1], num=n_divisions, dtype=int)
-    
-    # # static exit_points
-    # exit_points = get_strategic_exit_points(loaded_array, x_divisions, y_divisions)
-    # # Set start and end coordinates (replace with your own coordinates) (X, Y)
-    # start_coord = {'x': 100, 'y': 100}
-    # end_coord = {'x': 110, 'y': 100}
-
-
-    # # Run A* pathfinding algorithm
-    # optimal_path = tuple_to_json(astar_pathfinding(loaded_array, (start_coord['x'], start_coord['y']), (end_coord['x'], end_coord['y'])))
-    # main_path = [optimal_path, True]
-    
-    # # Run A* in each rectangle to compute paths between exit points
-    # paths_between_exit_points = run_astar_in_rectangle(loaded_array, exit_points, x_divisions, y_divisions)
-     
-    # paths = paths_between_exit_points + [main_path] 
-
-    # # Visualize the path on the image
-    # visualize_path(loaded_array, paths, start_coord, end_coord, x_divisions, y_divisions, exit_points)
-
     return render_template('index.html')
 
 @app.route('/maps/<filename>')
@@ -68,7 +42,12 @@ def get_image_info():
     # Assuming you have a function to get image info based on game_name
     image_path = get_image_path(map_directory, game_map_dict['map_name'], supported_extensions)
     global loaded_array
-    loaded_array = load_npy(f"obstacle_maps/{game_map_dict['map_name']}_obstacle.npy")
+    try :
+        loaded_array = load_npy(f"obstacle_maps/{game_map_dict['map_name']}_obstacle.npy")
+    except Exception as e :
+        create_obstacle_map(image_path, threshold_value=game_map_dict['threshold'], reverse=game_map_dict['reverse'])
+        loaded_array = load_npy(f"obstacle_maps/{game_map_dict['map_name']}_obstacle.npy")
+        print(e)
     original_width, original_height = loaded_array.shape
 
     return jsonify({
@@ -78,6 +57,7 @@ def get_image_info():
     })
     
     
+
 @app.route('/get_optimal_path', methods=['POST'])
 def get_optimal_path():
     data = request.get_json()
@@ -92,8 +72,17 @@ def get_optimal_path():
     # Example: Your A* pathfinding logic here
 
     optimal_path = tuple_to_json(astar_pathfinding(loaded_array, (start_point['x'], start_point['y']), (end_point['x'], end_point['y'])))
-
+    # paths_between_exit_points = run_astar_in_rectangle(loaded_array, exit_points, x_divisions, y_divisions)
     return jsonify({'path': optimal_path})
+
+@app.route('/get_hpa_path', methods=['POST'])
+def get_hpa_path():
+    data = request.get_json()
+    x_divisions = data.get('x_divisions')
+    y_divisions = data.get('y_divisions')
+    exit_points = data.get('exit_points')
+    optimal_paths = run_astar_in_rectangle(loaded_array, exit_points=exit_points, x_divisions=x_divisions, y_divisions=y_divisions, js_api=True)
+    return jsonify({'paths': optimal_paths})
 
 def convert_int64_to_int(item):
     if isinstance(item, np.int64):
